@@ -565,6 +565,7 @@ version = "0.0.1"
 dependencies = [
  "capnp",
  "hid-io-client",
+ "hid-io-core",
  "rand",
  "tokio",
  "tokio-rustls",
