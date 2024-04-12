@@ -1,0 +1,12 @@
+[package]
+name = "hid-io-ergoone"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+hid-io-client = { path = "../hid-io-core/hid-io-client" }
+tokio         = { version = "1.18", features = ["net", "rt-multi-thread", "macros", "sync", "time"] }
+tokio-rustls  = { version = "0.23" }
+tokio-util    = { version = "0.7", features = ["compat"] }
+rand         = "0.8"
+capnp        = { version = "0.14" }
