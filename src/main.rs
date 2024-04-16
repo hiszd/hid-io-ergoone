@@ -33,6 +33,7 @@ use hid_io_client::setup_logging_lite;
 use rand::Rng;
 use std::io::Read;
 use std::io::Write;
+use std::process::Command;
 
 #[derive(Default)]
 pub struct KeyboardSubscriberImpl {
@@ -54,104 +55,18 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
             match signaltype {
                 hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(cli) => {
                     let cli = cli.unwrap();
-                    print!("{}", cli.get_output().unwrap());
-                    std::io::stdout().flush().unwrap();
-                }
-                hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Manufacturing(
-                    res,
-                ) => {
-                    let res = res.unwrap();
-                    match res.get_cmd().unwrap() {
-                        keyboard_capnp::keyboard::signal::manufacturing_result::Command::LedTestSequence => match res.get_arg() {
-                            2 | 3 => {
-                                println!("{:?}:{} => ", res.get_cmd(), res.get_arg());
-                                // LED short/open test
-                                let mut pos: usize = 0;
-                                let data = res.get_data().unwrap();
-                                loop {
-                                    let chipid = data.get(pos as u32);
-                                    pos += 1;
-                                    let buffer_len = data.get(pos as u32);
-                                    pos += 1;
-                                    let buffer =
-                                        &data.as_slice().unwrap()[pos..pos + buffer_len as usize];
-                                    pos += buffer_len as usize;
-                                    println!("ChipId: {} {}", chipid, buffer_len);
-                                    for byte in buffer {
-                                        print!("{:02x} ", byte);
-                                    }
-                                    println!();
-                                    if pos >= data.len().try_into().unwrap() {
-                                        break;
-                                    }
-                                }
-                            }
-                            _ => {
-                                println!("Manufacturing command {} not implemented", res.get_arg())
-                            }
+                    let out = cli.get_output().unwrap();
+                    print!("{}", out);
+                    match out.split_once(":") {
+                        Some(("volume", param)) => {
+                            let _monoutput = Command::new("pamixer")
+                                .arg("--set-volume")
+                                .arg(param)
+                                .output()
+                                .unwrap();
                         },
-                        keyboard_capnp::keyboard::signal::manufacturing_result::Command::HallEffectSensorTest => match res.get_arg() {
-                            2 => {
-                                let mut tmp = vec![];
-                                let mut pos = 0;
-                                for (i, byte) in res.get_data().unwrap().iter().enumerate() {
-                                    if i == 0 || i == 1 {
-                                        continue;
-                                    }
-
-                                    tmp.push(byte);
-                                    if tmp.len() == 4 {
-                                        // Check if header (strobe) or sense data
-                                        if pos % 7 == 0 {
-                                            let strobe = tmp[0];
-                                            // Print on full strobe
-                                            if strobe == 0 {
-                                                println!("{:?}:{} => ", res.get_cmd(), res.get_arg());
-                                                for (i, data) in self.hall_effect_switch_data.iter().enumerate() {
-                                                print!("{:>4} ", i);
-                                                // Print raw
-                                                for elem in data {
-                                                    print!("{:>4} ", elem.0);
-                                                }
-                                                // Print offset
-                                                for elem in data {
-                                                    print!("{:>4} ", elem.1);
-                                                }
-                                                println!();
-                                                }
-                                            }
-
-                                            self.hall_effect_switch_data_cur_strobe = strobe;
-                                            if self.hall_effect_switch_data.len() <= strobe as usize {
-                                                self.hall_effect_switch_data
-                                                    .resize(strobe as usize + 1, vec![]);
-                                            }
-                                            self.hall_effect_switch_data[strobe as usize] = vec![];
-                                        } else {
-                                            let data = u16::from_le_bytes([tmp[0], tmp[1]]);
-                                            let offset = i16::from_le_bytes([tmp[2], tmp[3]]);
-                                            self.hall_effect_switch_data[self.hall_effect_switch_data_cur_strobe as usize].push((data, offset));
-                                        }
-                                        tmp.clear();
-                                        pos += 1;
-                                    }
-                                }
-                            }
-                            _ => {
-                                println!("{:?}:{} => ", res.get_cmd(), res.get_arg());
-                                for byte in res.get_data().unwrap() {
-                                    print!("{} ", byte);
-                                }
-                                println!();
-                            }
-                        },
-                        _ => {
-                            println!("{:?}:{} => ", res.get_cmd(), res.get_arg());
-                            for byte in res.get_data().unwrap() {
-                                print!("{} ", byte);
-                            }
-                            println!();
-                        }
+                        None => {},
+                        _ => {},
                     }
                     std::io::stdout().flush().unwrap();
                 }
