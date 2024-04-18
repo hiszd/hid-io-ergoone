@@ -59,11 +59,13 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                     print!("{}", out);
                     match out.split_once(":") {
                         Some(("volume", param)) => {
-                            let _monoutput = Command::new("pamixer")
+                            match Command::new("pamixer")
                                 .arg("--set-volume")
                                 .arg(param)
-                                .output()
-                                .unwrap();
+                                .output() {
+                                Ok(n) => {println!("OK: {}", String::from_utf8_lossy(&n.stdout))},
+                                Err(e) => {println!("ERROR: Failed to set volume: {}", e)},
+                                }
                         },
                         None => {},
                         _ => {},
