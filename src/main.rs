@@ -53,20 +53,106 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         // Only read cli messages
         if let Ok(signaltype) = signal.get_data().which() {
             match signaltype {
-                hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(cli) => {
-                    let cli = cli.unwrap();
-                    let out = cli.get_output().unwrap();
-                    print!("{}", out);
-                    match out.split_once(":") {
-                        Some(("volume", param)) => {
-                            let _monoutput = Command::new("pamixer")
+                hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
+                    let v = v.unwrap();
+                    let cmd = v.get_cmd().unwrap();
+                    let vol = v.get_vol();
+                    // let app = v
+                    //     .get_app()
+                    //     .unwrap()
+                    //     .iter()
+                    //     .map(|n| n.unwrap().to_string())
+                    //     .collect::<Vec<String>>();
+                    // print!("{:?}, {:?}, {:?}", cmd, vol, app);
+                    print!("{:?}, {:?}", cmd, vol);
+                    match cmd {
+                        hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Set => {
+                            match Command::new("pamixer")
+                                .arg("--default-source")
                                 .arg("--set-volume")
-                                .arg(param)
+                                .arg(vol.to_string())
                                 .output()
-                                .unwrap();
-                        },
-                        None => {},
-                        _ => {},
+                            {
+                                Ok(n) => {
+                                    println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
+                                }
+                                Err(e) => {
+                                    panic!("pamixer: {}", e);
+                                }
+                            }
+                        }
+                        hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Inc => {
+                            match Command::new("pamixer")
+                                .arg("--default-source")
+                                .arg("--increase")
+                                .arg(vol.to_string())
+                                .output()
+                            {
+                                Ok(n) => {
+                                    println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
+                                }
+                                Err(e) => {
+                                    panic!("pamixer: {}", e);
+                                }
+                            }
+                        }
+                        hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Dec => {
+                            match Command::new("pamixer")
+                                .arg("--default-source")
+                                .arg("--decrease")
+                                .arg(vol.to_string())
+                                .output()
+                            {
+                                Ok(n) => {
+                                    println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
+                                }
+                                Err(e) => {
+                                    panic!("pamixer: {}", e);
+                                }
+                            }
+                        }
+                        hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Mute => {
+                            match Command::new("pamixer")
+                                .arg("--default-source")
+                                .arg("--mute")
+                                .output()
+                            {
+                                Ok(n) => {
+                                    println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
+                                }
+                                Err(e) => {
+                                    panic!("pamixer: {}", e);
+                                }
+                            }
+                        }
+                        hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::UnMute => {
+                            match Command::new("pamixer")
+                                .arg("--default-source")
+                                .arg("--unmute")
+                                .output()
+                            {
+                                Ok(n) => {
+                                    println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
+                                }
+                                Err(e) => {
+                                    panic!("pamixer: {}", e);
+                                }
+                            }
+                        }
+                        hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::ToggleMute => {
+                            match Command::new("pamixer")
+                                .arg("--default-source")
+                                .arg("--toggle-mute")
+                                .output()
+                            {
+                                Ok(n) => {
+                                    println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
+                                }
+                                Err(e) => {
+                                    panic!("pamixer: {}", e);
+                                }
+                            }
+                        }
                     }
                     std::io::stdout().flush().unwrap();
                 }
