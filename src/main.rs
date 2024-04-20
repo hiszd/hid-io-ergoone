@@ -31,6 +31,8 @@ use hid_io_client::hidio_capnp;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
 use rand::Rng;
+use std::any::Any;
+use std::borrow::Borrow;
 use std::io::Read;
 use std::io::Write;
 use std::process::Command;
@@ -48,10 +50,14 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         params: keyboard_capnp::keyboard::subscriber::UpdateParams,
         _results: keyboard_capnp::keyboard::subscriber::UpdateResults,
     ) -> Promise<(), ::capnp::Error> {
-        let signal = pry!(pry!(params.get()).get_signal());
+        let p = pry!(params.borrow().get());
+        println!("p: {:?}", p.clone().type_id());
+        let signal = pry!(p.get_signal());
 
+        let st = signal.clone().get_data().which();
         // Only read cli messages
-        if let Ok(signaltype) = signal.get_data().which() {
+        if st.is_ok() {
+            let signaltype = st.unwrap();
             match signaltype {
                 hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
                     let v = v.unwrap();
