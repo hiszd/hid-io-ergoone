@@ -25,33 +25,26 @@ extern crate tokio;
 use hid_io_client::capnp;
 use hid_io_client::capnp::capability::Promise;
 use hid_io_client::capnp_rpc;
-use hid_io_client::capnp_rpc::pry;
 use hid_io_client::common_capnp::NodeType;
-use hid_io_client::hidio_capnp;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
 use rand::Rng;
-use std::any::Any;
 use std::io::Read;
 use std::io::Write;
 use std::process::Command;
 
 #[derive(Default)]
-pub struct KeyboardSubscriberImpl {
-    /// Switch matrix (raw, calibration offset)
-    pub hall_effect_switch_data: Vec<Vec<(u16, i16)>>,
-    pub hall_effect_switch_data_cur_strobe: u8,
-}
+pub struct KeyboardSubscriberImpl {}
 
 impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
     fn update(
         &mut self,
         params: keyboard_capnp::keyboard::subscriber::UpdateParams,
         _results: keyboard_capnp::keyboard::subscriber::UpdateResults,
-    ) -> Promise<(), ::capnp::Error> {
-        let signal = params.get().unwrap().get_signal();
-
-        let st = signal.clone().unwrap().get_data().to_owned();
+    ) -> Promise<(), capnp::Error> {
+        let st = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal())
+            .get_data()
+            .to_owned();
         // Only read cli messages
         if st.which().is_ok() {
             let signaltype = st.which().unwrap();
@@ -61,13 +54,13 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                     let cmd = v.get_cmd().unwrap();
                     let vol = v.get_vol();
                     /* let app = v
-                    *     .get_app()
-                    *     .unwrap()
-                    *     .iter()
-                    *     .map(|n| n.unwrap().to_string())
-                    *     .collect::<Vec<String>>();
-                    * print!("{:?}, {:?}, {:?}", cmd, vol, app);
-                    */
+                     *     .get_app()
+                     *     .unwrap()
+                     *     .iter()
+                     *     .map(|n| n.unwrap().to_string())
+                     *     .collect::<Vec<String>>();
+                     * print!("{:?}, {:?}, {:?}", cmd, vol, app);
+                     */
                     print!("{:?}, {:?}", cmd, vol);
                     match cmd {
                         hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Set => {
@@ -162,8 +155,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                 }
                 _ => {}
             }
-        }
-        else {
+        } else {
             println!("Unknown signal");
         }
 
@@ -191,7 +183,7 @@ async fn try_main() -> Result<(), capnp::Error> {
             .connect(
                 hid_io_client::AuthType::Priviledged,
                 NodeType::HidioApi,
-                "RPC Test".to_string(),
+                "HID-IO ErgoOne".to_string(),
                 format!("{:x} - pid:{}", rng.gen::<u64>(), std::process::id()),
                 true,
                 std::time::Duration::from_millis(1000),
@@ -277,9 +269,10 @@ async fn try_main() -> Result<(), capnp::Error> {
             params.set_subscriber(subscription);
 
             // Build list of options
-            let mut options = params.init_options(1);
-            let mut vol_option = options.reborrow().get(0);
-            vol_option.set_type(keyboard_capnp::keyboard::SubscriptionOptionType::Volume);
+            params
+                .init_options(1)
+                .get(0)
+                .set_type(keyboard_capnp::keyboard::SubscriptionOptionType::Volume);
             request
         };
         let _callback = subscribe_req.send().promise.await.unwrap();
@@ -327,30 +320,6 @@ async fn try_main() -> Result<(), capnp::Error> {
                         println!("Lost socket (buffer)");
                         ::std::process::exit(1);
                     }
-                }
-            }
-
-            if let Ok(nodetype) = device.get_node().which() {
-                match nodetype {
-                    hid_io_client::common_capnp::destination::node::Which::Keyboard(node) => {
-                        let node = node?;
-                        let _command_resp = {
-                            // Cast/transform keyboard node to a hidio node
-                            let mut request = hidio_capnp::node::Client {
-                                client: node.client,
-                            }
-                            .cli_command_request();
-                            request.get().set_command(&String::from_utf8(vt_buf)?);
-                            match request.send().promise.await {
-                                Ok(response) => response,
-                                Err(e) => {
-                                    println!("Dead: {}", e);
-                                    break;
-                                }
-                            }
-                        };
-                    }
-                    hid_io_client::common_capnp::destination::node::Which::Daemon(_node) => {}
                 }
             }
         }
