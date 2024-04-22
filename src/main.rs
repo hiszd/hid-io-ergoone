@@ -32,7 +32,6 @@ use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
 use rand::Rng;
 use std::any::Any;
-use std::borrow::Borrow;
 use std::io::Read;
 use std::io::Write;
 use std::process::Command;
@@ -50,26 +49,25 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         params: keyboard_capnp::keyboard::subscriber::UpdateParams,
         _results: keyboard_capnp::keyboard::subscriber::UpdateResults,
     ) -> Promise<(), ::capnp::Error> {
-        let p = pry!(params.borrow().get());
-        println!("p: {:?}", p.clone().type_id());
-        let signal = pry!(p.get_signal());
+        let signal = params.get().unwrap().get_signal();
 
-        let st = signal.clone().get_data().which();
+        let st = signal.clone().unwrap().get_data().to_owned();
         // Only read cli messages
-        if st.is_ok() {
-            let signaltype = st.unwrap();
+        if st.which().is_ok() {
+            let signaltype = st.which().unwrap();
             match signaltype {
                 hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
                     let v = v.unwrap();
                     let cmd = v.get_cmd().unwrap();
                     let vol = v.get_vol();
-                    // let app = v
-                    //     .get_app()
-                    //     .unwrap()
-                    //     .iter()
-                    //     .map(|n| n.unwrap().to_string())
-                    //     .collect::<Vec<String>>();
-                    // print!("{:?}, {:?}, {:?}", cmd, vol, app);
+                    /* let app = v
+                    *     .get_app()
+                    *     .unwrap()
+                    *     .iter()
+                    *     .map(|n| n.unwrap().to_string())
+                    *     .collect::<Vec<String>>();
+                    * print!("{:?}, {:?}, {:?}", cmd, vol, app);
+                    */
                     print!("{:?}, {:?}", cmd, vol);
                     match cmd {
                         hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Set => {
@@ -164,6 +162,9 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                 }
                 _ => {}
             }
+        }
+        else {
+            println!("Unknown signal");
         }
 
         Promise::ok(())
@@ -277,8 +278,8 @@ async fn try_main() -> Result<(), capnp::Error> {
 
             // Build list of options
             let mut options = params.init_options(1);
-            let mut cli_option = options.reborrow().get(0);
-            cli_option.set_type(keyboard_capnp::keyboard::SubscriptionOptionType::CliOutput);
+            let mut vol_option = options.reborrow().get(0);
+            vol_option.set_type(keyboard_capnp::keyboard::SubscriptionOptionType::Volume);
             request
         };
         let _callback = subscribe_req.send().promise.await.unwrap();
