@@ -175,6 +175,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         let params = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal())
             .get_data()
             .to_owned();
+        println!("{:?}", params.into_internal_struct_reader().get_pointer_section_as_list().get_pointer_element(0).get_pointer_type().unwrap());
         match params.which().unwrap() {
             hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
                 let v = v.unwrap();
