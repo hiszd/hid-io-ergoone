@@ -175,7 +175,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         let params = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal())
             .get_data()
             .to_owned();
-        println!("{:?}", params.into_internal_struct_reader().get_pointer_section_as_list().get_pointer_element(0).get_pointer_type().unwrap());
+        println!("{:?}", data);
         match params.which().unwrap() {
             hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
                 let v = v.unwrap();
@@ -190,7 +190,95 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                         let cmdnum = splt[0][7..].to_string();
                         let volcmd = h0060::Command::try_from(cmdnum.as_str()).unwrap();
                         let vol = splt[1].parse::<u16>().unwrap();
-                        println!("{:?} {}", volcmd, vol);
+                        match volcmd {
+                            h0060::Command::Set => {
+                                let cmd = Command::new("pamixer")
+                                    .arg("--set-volume")
+                                    .arg(vol.to_string())
+                                    .output()
+                                    .unwrap();
+                                if !cmd.status.success() {
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                } else {
+                                    println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
+                                    println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
+                                }
+                            }
+                            h0060::Command::Inc => {
+                                let cmd = Command::new("pamixer")
+                                    .arg("--increase")
+                                    .arg(vol.to_string())
+                                    .output()
+                                    .unwrap();
+                                if !cmd.status.success() {
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                } else {
+                                    println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
+                                    println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
+                                }
+                            }
+                            h0060::Command::Dec => {
+                                let cmd = Command::new("pamixer")
+                                    .arg("--decrease")
+                                    .arg(vol.to_string())
+                                    .output()
+                                    .unwrap();
+                                if !cmd.status.success() {
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                } else {
+                                    println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
+                                    println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
+                                }
+                            }
+                            h0060::Command::Mute => {
+                                let cmd = Command::new("pamixer")
+                                    .arg("--mute")
+                                    .arg(vol.to_string())
+                                    .output()
+                                    .unwrap();
+                                if !cmd.status.success() {
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                } else {
+                                    println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
+                                    println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
+                                }
+                            }
+                            h0060::Command::UnMute => {
+                                let cmd = Command::new("pamixer")
+                                    .arg("--unmute")
+                                    .arg(vol.to_string())
+                                    .output()
+                                    .unwrap();
+                                if !cmd.status.success() {
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                } else {
+                                    println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
+                                    println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
+                                }
+                            }
+                            h0060::Command::ToggleMute => {
+                                let cmd = Command::new("pamixer")
+                                    .arg("--toggle-mute")
+                                    .arg(vol.to_string())
+                                    .output()
+                                    .unwrap();
+                                if !cmd.status.success() {
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
+                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                } else {
+                                    println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
+                                    println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
+                                }
+                            }
+                            h0060::Command::InvalidCommand => {
+                                println!("ERROR: InvalidCommand");
+                            }
+                        }
                     } else {
                         println!("Unknown: {}", out);
                     }
