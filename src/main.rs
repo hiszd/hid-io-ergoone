@@ -22,6 +22,8 @@
 
 extern crate tokio;
 
+use capnp::private::capability::ParamsHook;
+use capnp::traits::IntoInternalStructReader;
 use hid_io_client::capnp;
 use hid_io_client::capnp::capability::Promise;
 use hid_io_client::capnp_rpc;
@@ -171,13 +173,15 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         let params = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal())
             .get_data()
             .to_owned();
+        println!("{:?}", params.into_internal_struct_reader().get_pointer_section_as_list().get_pointer_element(0).get_pointer_type().unwrap());
         match params.which().unwrap() {
             hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
                 let v = v.unwrap();
                 println!("Volume: {:?}, {}",v.get_cmd().unwrap(), v.get_vol());
             }
-            hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(_) => {
-                println!("Cli");
+            hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(v) => {
+                let v = v.unwrap();
+                println!("Cli: {:?}",v.into_internal_struct_reader().get_data_section_as_blob());
             }
             hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Kll(_) => {
                 println!("Kll");
