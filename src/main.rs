@@ -22,17 +22,19 @@
 
 extern crate tokio;
 
+use capnp::traits::IntoInternalListReader;
 use hid_io_client::capnp;
 use hid_io_client::capnp::capability::Promise;
 use hid_io_client::capnp_rpc;
 use hid_io_client::common_capnp::NodeType;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
+use hid_io_protocol::commands::h0060;
 use rand::Rng;
-use std::borrow::Borrow;
 use std::io::Read;
 use std::io::Write;
 use std::process::Command;
+use capnp::traits::IntoInternalStructReader;
 
 #[derive(Default)]
 pub struct KeyboardSubscriberImpl {}
@@ -168,6 +170,8 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         params: keyboard_capnp::keyboard::subscriber::UpdateParams,
         _results: keyboard_capnp::keyboard::subscriber::UpdateResults,
     ) -> Promise<(), capnp::Error> {
+        // println!("Data: {}", params.get().unwrap().get_signal().unwrap().get_data().into_internal_struct_reader().get_data_field::<u16>(1));
+        let data = params.get().unwrap().get_signal().unwrap().get_data().into_internal_struct_reader().get_data_field::<u16>(1);
         let params = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal())
             .get_data()
             .to_owned();
@@ -176,8 +180,22 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                 let v = v.unwrap();
                 println!("Volume: {:?}, {}",v.get_cmd().unwrap(), v.get_vol());
             }
-            hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(_) => {
-                println!("Cli");
+            hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(c) => {
+                if data > 0 {
+                    let out = c.unwrap().get_output().unwrap();
+                    println!("Cli: {}", out);
+                    if out.starts_with("volume-") {
+                        let splt = out.split(':').collect::<Vec<&str>>();
+                        let cmdnum = splt[0][7..].to_string();
+                        let volcmd = h0060::Command::try_from(cmdnum.as_str()).unwrap();
+                        let vol = splt[1].parse::<u16>().unwrap();
+                        println!("{:?} {}", volcmd, vol);
+                    } else {
+                        println!("Unknown: {}", out);
+                    }
+                } else {
+                    println!("Cli");
+                }
             }
             hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Kll(_) => {
                 println!("Kll");

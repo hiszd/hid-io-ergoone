@@ -566,6 +566,7 @@ dependencies = [
  "capnp",
  "hid-io-client",
  "hid-io-core",
+ "hid-io-protocol",
  "rand",
  "tokio",
  "tokio-rustls",
@@ -667,8 +668,6 @@ dependencies = [
 [[package]]
 name = "kll-core"
 version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c209fe70609243ecbed39ea5da0638fd77ec14afcc1c7810aa67e2fcd13fa262"
 dependencies = [
  "byteorder",
  "enum-primitive-derive",
@@ -683,14 +682,10 @@ dependencies = [
 [[package]]
 name = "kll-hid"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "560300f45aaba3e407bef7d7671ae90e73b99881983b8745043b67b25d33c9d3"
 
 [[package]]
 name = "kll-macros"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecf9a7b74755c4b14a6abe68b533abb29aa80758e26825b4ea4704b3e1e3fba3"
 
 [[package]]
 name = "lazy_static"
