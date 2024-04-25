@@ -31,10 +31,37 @@ use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
 use hid_io_protocol::commands::h0060;
 use rand::Rng;
+use serde::{ Serialize, Deserialize };
 use std::io::Read;
 use std::io::Write;
 use std::process::Command;
 use capnp::traits::IntoInternalStructReader;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Client {
+      pub index: u32,
+      pub driver: String,
+      #[serde(rename = "application.process.binary")]
+      pub application_process_binary: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ClientList {
+      pub clients: Vec<Client>,
+}
+
+fn get_clients() -> ClientList {
+    let paclients = Command::new("pactl")
+        .arg("--format=json")
+        .arg("list")
+        .arg("short")
+        .arg("clients")
+        .output()
+        .unwrap();
+    // println!("clients: {:?}", String::from_utf8(paclients.stdout.clone()).unwrap());
+    let paclientsjson: Vec<Client> = serde_json::from_slice(&paclients.stdout).unwrap();
+    ClientList { clients: paclientsjson }
+}
 
 #[derive(Default)]
 pub struct KeyboardSubscriberImpl {}
@@ -192,14 +219,17 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                         let vol = splt[1].parse::<u16>().unwrap();
                         match volcmd {
                             h0060::Command::Set => {
+                                let clients = get_clients();
+                                for client in clients.clients.iter() {
+                                    println!("Client: {:?}", client);
+                                }
                                 let cmd = Command::new("pamixer")
                                     .arg("--set-volume")
                                     .arg(vol.to_string())
                                     .output()
                                     .unwrap();
                                 if !cmd.status.success() {
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                    panic!("ERROR: pamixer - {} -- {}", String::from_utf8(cmd.stderr).unwrap(), String::from_utf8(cmd.stdout).unwrap());
                                 } else {
                                     println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
                                     println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
@@ -212,8 +242,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                                     .output()
                                     .unwrap();
                                 if !cmd.status.success() {
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                    panic!("ERROR: pamixer - {} -- {}", String::from_utf8(cmd.stderr).unwrap(), String::from_utf8(cmd.stdout).unwrap());
                                 } else {
                                     println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
                                     println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
@@ -226,8 +255,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                                     .output()
                                     .unwrap();
                                 if !cmd.status.success() {
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                    panic!("ERROR: pamixer - {} -- {}", String::from_utf8(cmd.stderr).unwrap(), String::from_utf8(cmd.stdout).unwrap());
                                 } else {
                                     println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
                                     println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
@@ -240,8 +268,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                                     .output()
                                     .unwrap();
                                 if !cmd.status.success() {
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                    panic!("ERROR: pamixer - {} -- {}", String::from_utf8(cmd.stderr).unwrap(), String::from_utf8(cmd.stdout).unwrap());
                                 } else {
                                     println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
                                     println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
@@ -254,8 +281,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                                     .output()
                                     .unwrap();
                                 if !cmd.status.success() {
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                    panic!("ERROR: pamixer - {} -- {}", String::from_utf8(cmd.stderr).unwrap(), String::from_utf8(cmd.stdout).unwrap());
                                 } else {
                                     println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
                                     println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
@@ -268,8 +294,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                                     .output()
                                     .unwrap();
                                 if !cmd.status.success() {
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr).unwrap());
-                                    panic!("ERROR: pamixer - {}", String::from_utf8(cmd.stdout).unwrap());
+                                    panic!("ERROR: pamixer - {} -- {}", String::from_utf8(cmd.stderr).unwrap(), String::from_utf8(cmd.stdout).unwrap());
                                 } else {
                                     println!("pamixer: {}", String::from_utf8(cmd.stdout).unwrap());
                                     println!("pamixer: {}", String::from_utf8(cmd.stderr).unwrap());
