@@ -34,69 +34,10 @@ use hid_io_client::capnp_rpc;
 use hid_io_client::common_capnp::NodeType;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
+use hid_io_ergoone::json::types::PactlInput;
+use hid_io_ergoone::json::utils::get_client_matches;
 use hid_io_protocol::commands::h0060;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct PactlClient {
-  pub index: u32,
-  pub driver: String,
-  #[serde(rename = "application.process.binary")]
-  pub application_process_binary: String,
-}
-
-impl PactlClient {
-  fn get_inputs(&self) -> Vec<PactlInput> {
-    let clients = get_clients();
-    let inputs = get_sink_inputs();
-    let app = &self.application_process_binary;
-    let client_match = clients.iter().filter(|c| c.application_process_binary.contains(app));
-    let inputs = inputs.iter().filter(|i| {
-      client_match.clone().filter(|c| c.index == i.client.parse::<u32>().unwrap()).count() > 0
-    });
-    inputs.map(|i| i.clone()).collect()
-  }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct PactlInput {
-  index: u32,
-  sink: u32,
-  client: String,
-  #[serde(skip)]
-  driver: String,
-  #[serde(skip)]
-  sample_specification: String,
-}
-
-fn get_sink_inputs() -> Vec<PactlInput> {
-  let inputs = Command::new("pactl")
-    .arg("--format=json")
-    .arg("list")
-    .arg("short")
-    .arg("sink-inputs")
-    .output()
-    .unwrap();
-  serde_json::from_slice(&inputs.stdout).unwrap()
-}
-
-fn get_client_matches(app: &str) -> Vec<PactlClient> {
-  let clients = get_clients();
-  let client_match = clients.iter().filter(|c| c.application_process_binary.contains(app));
-  client_match.map(|c| c.clone()).collect()
-}
-
-fn get_clients() -> Vec<PactlClient> {
-  let paclients = Command::new("pactl")
-    .arg("--format=json")
-    .arg("list")
-    .arg("short")
-    .arg("clients")
-    .output()
-    .unwrap();
-  serde_json::from_slice(&paclients.stdout).unwrap()
-}
 
 fn log_cmd(cmd: &Output) {
   if !cmd.status.success() {
@@ -276,10 +217,6 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
             let app: Option<&str> = if splt.len() > 2 { Some(splt[2]) } else { None };
             match volcmd {
               h0060::Command::Set => {
-                // let clients = get_clients();
-                // for client in clients.iter() {
-                //   println!("Client: {:?}", client);
-                // }
                 let cmd = Command::new("pactl")
                   .arg("set-sink-volume")
                   .arg("@DEFAULT_SINK@")
@@ -339,7 +276,10 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                   let mut sinks: Vec<PactlInput> = Vec::new();
                   let client = get_client_matches(app.unwrap());
                   client.iter().for_each(|c| {
-                    c.get_inputs().iter().for_each(|i| {
+                    let inputs = c.get_inputs();
+                    println!("Client: {:?} -> {}\n", c, inputs.iter().clone().count());
+                    inputs.iter().for_each(|i| {
+                      println!("Input: {:?}\n", i);
                       sinks.push(i.clone());
                     })
                   });
@@ -352,10 +292,10 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                     }
                   });
                   sinks.iter().for_each(|i| {
-                    println!("Sink: {:?}", i);
+                    println!("Sink: {:?}\n", i);
                     let cmd = Command::new("pactl")
                       .arg("set-sink-input-mute")
-                      .arg(i.sink.to_string())
+                      .arg(i.index.to_string())
                       .arg("toggle")
                       .output()
                       .unwrap();
