@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use serde::{Deserialize, Serialize};
 
 use super::utils::{get_clients, get_sink_inputs};
@@ -25,13 +27,61 @@ impl PactlClient {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PactlInput {
-  pub index: u32,
+  pub index: String,
   pub sink: u32,
   pub client: String,
-  #[serde(skip)]
-  driver: String,
-  #[serde(skip)]
-  sample_specification: String,
 }
 
+impl PactlInput {
+  pub fn default() -> Self {
+      Self {
+          index: "@DEFAULT_SINK@".to_string(),
+          sink: 0,
+          client: String::new(),
+      }
+  }
 
+  pub fn volume(&self, prefix: &str, volume: u32) {
+    crate::log_cmd(
+      &Command::new("pactl")
+        .arg("set-sink-input-volume")
+        .arg(self.index.to_string())
+        .arg(prefix.to_string() + &volume.to_string() + "%")
+        .output()
+        .unwrap(),
+    );
+  }
+
+  pub fn mute(&self) {
+    crate::log_cmd(
+      &Command::new("pactl")
+        .arg("set-sink-input-mute")
+        .arg(self.index.to_string())
+        .arg("1")
+        .output()
+        .unwrap(),
+    );
+  }
+
+  pub fn unmute(&self) {
+    crate::log_cmd(
+      &Command::new("pactl")
+        .arg("set-sink-input-mute")
+        .arg(self.index.to_string())
+        .arg("0")
+        .output()
+        .unwrap(),
+    );
+  }
+
+  pub fn toggle_mute(&self) {
+    crate::log_cmd(
+      &Command::new("pactl")
+        .arg("set-sink-input-mute")
+        .arg(self.index.to_string())
+        .arg("toggle")
+        .output()
+        .unwrap(),
+    );
+  }
+}

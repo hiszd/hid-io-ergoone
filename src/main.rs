@@ -39,22 +39,6 @@ use hid_io_ergoone::json::utils::get_client_matches;
 use hid_io_protocol::commands::h0060;
 use rand::Rng;
 
-fn log_cmd(cmd: &Output) {
-  if !cmd.status.success() {
-    panic!(
-      "ERROR: pamixer - {} -- {}",
-      String::from_utf8(cmd.stderr.clone()).unwrap(),
-      String::from_utf8(cmd.stdout.clone()).unwrap()
-    );
-  } else {
-    println!(
-      "ERROR: pamixer - {} -- {}",
-      String::from_utf8(cmd.stderr.clone()).unwrap(),
-      String::from_utf8(cmd.stdout.clone()).unwrap()
-    );
-  }
-}
-
 #[derive(Default)]
 pub struct KeyboardSubscriberImpl {}
 
@@ -217,59 +201,24 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
             let app: Option<&str> = if splt.len() > 2 { Some(splt[2]) } else { None };
             match volcmd {
               h0060::Command::Set => {
-                let cmd = Command::new("pactl")
-                  .arg("set-sink-volume")
-                  .arg("@DEFAULT_SINK@")
-                  .arg(format!("{}%", vol))
-                  .output()
-                  .unwrap();
-                log_cmd(&cmd);
+                PactlInput::default().volume("", vol as u32);
               }
               h0060::Command::Inc => {
-                let cmd = Command::new("pactl")
-                  .arg("set-sink-volume")
-                  .arg("@DEFAULT_SINK@")
-                  .arg(format!("+{}%", vol))
-                  .output()
-                  .unwrap();
-                log_cmd(&cmd);
+                PactlInput::default().volume("+", vol as u32);
               }
               h0060::Command::Dec => {
-                let cmd = Command::new("pactl")
-                  .arg("set-sink-volume")
-                  .arg("@DEFAULT_SINK@")
-                  .arg(format!("-{}%", vol))
-                  .output()
-                  .unwrap();
-                log_cmd(&cmd);
+                PactlInput::default().volume("-", vol as u32);
               }
               h0060::Command::Mute => {
-                let cmd = Command::new("pactl")
-                  .arg("set-sink-mute")
-                  .arg("@DEFAULT_SINK@")
-                  .arg("1")
-                  .output()
-                  .unwrap();
-                log_cmd(&cmd);
+                PactlInput::default().mute();
               }
               h0060::Command::UnMute => {
-                let cmd: Output;
+                let sink = PactlInput::default();
                 if app.is_some() {
-                  cmd = Command::new("pactl")
-                    .arg("set-sink-mute")
-                    .arg("@DEFAULT_SINK@")
-                    .arg("0")
-                    .output()
-                    .unwrap();
+                  sink.mute();
                 } else {
-                  cmd = Command::new("pactl")
-                    .arg("set-sink-mute")
-                    .arg("@DEFAULT_SINK@")
-                    .arg("0")
-                    .output()
-                    .unwrap();
+                  sink.mute();
                 }
-                log_cmd(&cmd);
               }
               h0060::Command::ToggleMute => {
                 if app.is_some() {
@@ -277,14 +226,12 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                   let client = get_client_matches(app.unwrap());
                   client.iter().for_each(|c| {
                     let inputs = c.get_inputs();
-                    println!("Client: {:?} -> {}\n", c, inputs.iter().clone().count());
                     inputs.iter().for_each(|i| {
-                      println!("Input: {:?}\n", i);
                       sinks.push(i.clone());
                     })
                   });
                   sinks = sinks.iter().fold(Vec::new(), |mut acc, i| {
-                    if acc.iter().find(|a| a.sink == i.sink).is_none() {
+                    if acc.iter().find(|a| a.index == i.index).is_none() {
                       acc.push(i.clone());
                       acc
                     } else {
@@ -292,23 +239,10 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                     }
                   });
                   sinks.iter().for_each(|i| {
-                    println!("Sink: {:?}\n", i);
-                    let cmd = Command::new("pactl")
-                      .arg("set-sink-input-mute")
-                      .arg(i.index.to_string())
-                      .arg("toggle")
-                      .output()
-                      .unwrap();
-                    log_cmd(&cmd);
+                    i.toggle_mute();
                   })
                 } else {
-                  let cmd = Command::new("pactl")
-                    .arg("set-sink-mute")
-                    .arg("@DEFAULT_SINK@")
-                    .arg("toggle")
-                    .output()
-                    .unwrap();
-                  log_cmd(&cmd);
+                  PactlInput::default().toggle_mute();
                 }
               }
               h0060::Command::InvalidCommand => {
