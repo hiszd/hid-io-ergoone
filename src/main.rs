@@ -34,6 +34,7 @@ use hid_io_client::capnp_rpc;
 use hid_io_client::common_capnp::NodeType;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
+use hid_io_ergoone::json::types::Condense;
 use hid_io_ergoone::json::types::PactlInput;
 use hid_io_ergoone::json::utils::get_client_matches;
 use hid_io_protocol::commands::h0060;
@@ -201,43 +202,63 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
             let app: Option<&str> = if splt.len() > 2 { Some(splt[2]) } else { None };
             match volcmd {
               h0060::Command::Set => {
-                PactlInput::default().volume("", vol as u32);
+                if app.is_some() {
+                  let client = get_client_matches(app.unwrap());
+                  let sinks = client.condense();
+                  sinks.iter().for_each(|i| {
+                    i.volume("", vol as u32);
+                  })
+                } else {
+                  PactlInput::default().volume("", vol as u32);
+                }
               }
               h0060::Command::Inc => {
+                if app.is_some() {
+                  let client = get_client_matches(app.unwrap());
+                  let sinks = client.condense();
+                  sinks.iter().for_each(|i| {
+                    i.volume("+", vol as u32);
+                  })
+                }
                 PactlInput::default().volume("+", vol as u32);
               }
               h0060::Command::Dec => {
-                PactlInput::default().volume("-", vol as u32);
+                if app.is_some() {
+                  let client = get_client_matches(app.unwrap());
+                  let sinks = client.condense();
+                  sinks.iter().for_each(|i| {
+                    i.volume("-", vol as u32);
+                  })
+                } else {
+                  PactlInput::default().volume("-", vol as u32);
+                }
               }
               h0060::Command::Mute => {
+                if app.is_some() {
+                  let client = get_client_matches(app.unwrap());
+                  let sinks = client.condense();
+                  sinks.iter().for_each(|i| {
+                    i.mute();
+                  })
+                } else {
                 PactlInput::default().mute();
+                }
               }
               h0060::Command::UnMute => {
-                let sink = PactlInput::default();
                 if app.is_some() {
-                  sink.mute();
+                  let client = get_client_matches(app.unwrap());
+                  let sinks = client.condense();
+                  sinks.iter().for_each(|i| {
+                    i.unmute();
+                  })
                 } else {
-                  sink.mute();
+                  PactlInput::default().unmute();
                 }
               }
               h0060::Command::ToggleMute => {
                 if app.is_some() {
-                  let mut sinks: Vec<PactlInput> = Vec::new();
                   let client = get_client_matches(app.unwrap());
-                  client.iter().for_each(|c| {
-                    let inputs = c.get_inputs();
-                    inputs.iter().for_each(|i| {
-                      sinks.push(i.clone());
-                    })
-                  });
-                  sinks = sinks.iter().fold(Vec::new(), |mut acc, i| {
-                    if acc.iter().find(|a| a.index == i.index).is_none() {
-                      acc.push(i.clone());
-                      acc
-                    } else {
-                      acc
-                    }
-                  });
+                  let sinks = client.condense();
                   sinks.iter().for_each(|i| {
                     i.toggle_mute();
                   })

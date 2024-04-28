@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::types::{PactlClient, PactlInput};
+use super::types::{PactlClient, PactlInput, PactlJSONInput};
 
 pub fn get_sink_inputs() -> Vec<PactlInput> {
   let inputs = Command::new("pactl")
@@ -10,7 +10,8 @@ pub fn get_sink_inputs() -> Vec<PactlInput> {
     .arg("sink-inputs")
     .output()
     .unwrap();
-  serde_json::from_slice(&inputs.stdout).unwrap()
+  let inputsjson: Vec<PactlJSONInput> = serde_json::from_slice(&inputs.stdout).unwrap();
+  inputsjson.iter().map(|i| PactlInput { index: i.index.to_string(), sink: i.sink, client: i.client.clone() }).collect()
 }
 
 pub fn get_client_matches(app: &str) -> Vec<PactlClient> {

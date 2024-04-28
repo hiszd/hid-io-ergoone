@@ -26,6 +26,13 @@ impl PactlClient {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PactlJSONInput {
+  pub index: u32,
+  pub sink: u32,
+  pub client: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PactlInput {
   pub index: String,
   pub sink: u32,
@@ -34,11 +41,11 @@ pub struct PactlInput {
 
 impl PactlInput {
   pub fn default() -> Self {
-      Self {
-          index: "@DEFAULT_SINK@".to_string(),
-          sink: 0,
-          client: String::new(),
-      }
+    Self {
+      index: "@DEFAULT_SINK@".to_string(),
+      sink: 0,
+      client: String::new(),
+    }
   }
 
   pub fn volume(&self, prefix: &str, volume: u32) {
@@ -83,5 +90,31 @@ impl PactlInput {
         .output()
         .unwrap(),
     );
+  }
+}
+
+pub trait Condense {
+  fn condense(&self) -> Vec<PactlInput>;
+}
+
+impl Condense for Vec<PactlClient> {
+  fn condense(&self) -> Vec<PactlInput> {
+    self
+      .iter()
+      .fold(Vec::new(), |mut acc, c| {
+        c.get_inputs().iter().for_each(|i| {
+          acc.push(i.clone());
+        });
+        acc
+      })
+      .iter()
+      .fold(Vec::<PactlInput>::new(), |mut acc, i| {
+        if acc.iter().find(|a| a.index == i.index).is_none() {
+          acc.push(i.clone());
+          acc
+        } else {
+          acc
+        }
+      })
   }
 }
