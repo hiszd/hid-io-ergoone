@@ -24,8 +24,6 @@ extern crate tokio;
 
 use std::io::Read;
 use std::io::Write;
-use std::process::Command;
-use std::process::Output;
 
 use capnp::traits::IntoInternalStructReader;
 use hid_io_client::capnp;
@@ -34,141 +32,14 @@ use hid_io_client::capnp_rpc;
 use hid_io_client::common_capnp::NodeType;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
-use hid_io_ergoone::json::types::Condense;
-use hid_io_ergoone::json::types::PactlInput;
-use hid_io_ergoone::json::utils::get_client_matches;
-use hid_io_protocol::commands::h0060;
+use hid_io_ergoone::modules::layer::handle_layer_event;
+use hid_io_ergoone::modules::volume::handle_volume;
 use rand::Rng;
 
 #[derive(Default)]
 pub struct KeyboardSubscriberImpl {}
 
 impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
-  // fn update(
-  //     &mut self,
-  //     params: keyboard_capnp::keyboard::subscriber::UpdateParams,
-  //     _results: keyboard_capnp::keyboard::subscriber::UpdateResults,
-  // ) -> Promise<(), capnp::Error> {
-  //     let st = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal())
-  //         .get_data()
-  //         .to_owned();
-  //     // Only read cli messages
-  //     if st.which().is_ok() {
-  //         let signaltype = st.which().unwrap();
-  //         match signaltype {
-  //             hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
-  //                 let v = v.unwrap();
-  //                 let cmd = v.get_cmd().unwrap();
-  //                 let vol = v.get_vol();
-  //                 /* let app = v
-  //                  *     .get_app()
-  //                  *     .unwrap()
-  //                  *     .iter()
-  //                  *     .map(|n| n.unwrap().to_string())
-  //                  *     .collect::<Vec<String>>();
-  //                  * print!("{:?}, {:?}, {:?}", cmd, vol, app);
-  //                  */
-  //                 print!("{:?}, {:?}", cmd, vol);
-  //                 match cmd {
-  //                     hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Set => {
-  //                         match Command::new("pamixer")
-  //                             .arg("--default-source")
-  //                             .arg("--set-volume")
-  //                             .arg(vol.to_string())
-  //                             .output()
-  //                         {
-  //                             Ok(n) => {
-  //                                 println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
-  //                             }
-  //                             Err(e) => {
-  //                                 panic!("pamixer: {}", e);
-  //                             }
-  //                         }
-  //                     }
-  //                     hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Inc => {
-  //                         match Command::new("pamixer")
-  //                             .arg("--default-source")
-  //                             .arg("--increase")
-  //                             .arg(vol.to_string())
-  //                             .output()
-  //                         {
-  //                             Ok(n) => {
-  //                                 println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
-  //                             }
-  //                             Err(e) => {
-  //                                 panic!("pamixer: {}", e);
-  //                             }
-  //                         }
-  //                     }
-  //                     hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Dec => {
-  //                         match Command::new("pamixer")
-  //                             .arg("--default-source")
-  //                             .arg("--decrease")
-  //                             .arg(vol.to_string())
-  //                             .output()
-  //                         {
-  //                             Ok(n) => {
-  //                                 println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
-  //                             }
-  //                             Err(e) => {
-  //                                 panic!("pamixer: {}", e);
-  //                             }
-  //                         }
-  //                     }
-  //                     hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::Mute => {
-  //                         match Command::new("pamixer")
-  //                             .arg("--default-source")
-  //                             .arg("--mute")
-  //                             .output()
-  //                         {
-  //                             Ok(n) => {
-  //                                 println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
-  //                             }
-  //                             Err(e) => {
-  //                                 panic!("pamixer: {}", e);
-  //                             }
-  //                         }
-  //                     }
-  //                     hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::UnMute => {
-  //                         match Command::new("pamixer")
-  //                             .arg("--default-source")
-  //                             .arg("--unmute")
-  //                             .output()
-  //                         {
-  //                             Ok(n) => {
-  //                                 println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
-  //                             }
-  //                             Err(e) => {
-  //                                 panic!("pamixer: {}", e);
-  //                             }
-  //                         }
-  //                     }
-  //                     hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::ToggleMute => {
-  //                         match Command::new("pamixer")
-  //                             .arg("--default-source")
-  //                             .arg("--toggle-mute")
-  //                             .output()
-  //                         {
-  //                             Ok(n) => {
-  //                                 println!("pamixer1: {}", String::from_utf8(n.stderr).unwrap());
-  //                             }
-  //                             Err(e) => {
-  //                                 panic!("pamixer: {}", e);
-  //                             }
-  //                         }
-  //                     }
-  //                 }
-  //                 std::io::stdout().flush().unwrap();
-  //             }
-  //             _ => {}
-  //         }
-  //     } else {
-  //         println!("Unknown signal");
-  //     }
-  //
-  //     Promise::ok(())
-  // }
-
   fn update(
     &mut self,
     params: keyboard_capnp::keyboard::subscriber::UpdateParams,
@@ -184,7 +55,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
       .into_internal_struct_reader()
       .get_data_field::<u16>(1);
     let params = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal()).get_data().to_owned();
-    println!("{:?}", data);
+    // println!("{:?}", data);
     match params.which().unwrap() {
       hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
         let v = v.unwrap();
@@ -193,84 +64,10 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
       hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(c) => {
         if data > 0 {
           let out = c.unwrap().get_output().unwrap();
-          println!("Cli: {}", out);
           if out.starts_with("volume-") {
-            let splt = out.split(':').collect::<Vec<&str>>();
-            let cmdnum = splt[0][7..].to_string();
-            let volcmd = h0060::Command::try_from(cmdnum.as_str()).unwrap();
-            let vol = splt[1].parse::<u16>().unwrap();
-            let app: Option<&str> = if splt.len() > 2 { Some(splt[2]) } else { None };
-            match volcmd {
-              h0060::Command::Set => {
-                if app.is_some() {
-                  let client = get_client_matches(app.unwrap());
-                  let sinks = client.condense();
-                  sinks.iter().for_each(|i| {
-                    i.volume("", vol as u32);
-                  })
-                } else {
-                  PactlInput::default().volume("", vol as u32);
-                }
-              }
-              h0060::Command::Inc => {
-                if app.is_some() {
-                  let client = get_client_matches(app.unwrap());
-                  let sinks = client.condense();
-                  sinks.iter().for_each(|i| {
-                    i.volume("+", vol as u32);
-                  })
-                } else {
-                    PactlInput::default().volume("+", vol as u32);
-                }
-              }
-              h0060::Command::Dec => {
-                if app.is_some() {
-                  let client = get_client_matches(app.unwrap());
-                  let sinks = client.condense();
-                  sinks.iter().for_each(|i| {
-                    i.volume("-", vol as u32);
-                  })
-                } else {
-                  PactlInput::default().volume("-", vol as u32);
-                }
-              }
-              h0060::Command::Mute => {
-                if app.is_some() {
-                  let client = get_client_matches(app.unwrap());
-                  let sinks = client.condense();
-                  sinks.iter().for_each(|i| {
-                    i.mute();
-                  })
-                } else {
-                  PactlInput::default().mute();
-                }
-              }
-              h0060::Command::UnMute => {
-                if app.is_some() {
-                  let client = get_client_matches(app.unwrap());
-                  let sinks = client.condense();
-                  sinks.iter().for_each(|i| {
-                    i.unmute();
-                  })
-                } else {
-                  PactlInput::default().unmute();
-                }
-              }
-              h0060::Command::ToggleMute => {
-                if app.is_some() {
-                  let client = get_client_matches(app.unwrap());
-                  let sinks = client.condense();
-                  sinks.iter().for_each(|i| {
-                    i.toggle_mute();
-                  })
-                } else {
-                  PactlInput::default().toggle_mute();
-                }
-              }
-              h0060::Command::InvalidCommand => {
-                println!("ERROR: InvalidCommand");
-              }
-            }
+            handle_volume(&out);
+          } else if out.starts_with("layer-event") {
+            handle_layer_event(&out);
           } else {
             println!("Unknown: {}", out);
           }
@@ -334,10 +131,62 @@ async fn try_main() -> Result<(), capnp::Error> {
     let nodes = nodes_resp.get()?.get_nodes()?;
 
     let args: Vec<_> = std::env::args().collect();
-    let nid = match args.get(1) {
-      Some(n) => n.parse().unwrap(),
+    // let nid = match args.get(1) {
+    //   Some(n) => {
+    //     let n = n.parse().unwrap();
+    //     println!("ID specified: {}", n);
+    //     n
+    //   }
+    //   None => {
+    //     let id;
+    //
+    //     let serial_matched: Vec<_> =
+    //       nodes.iter().filter(|n| n.get_serial().unwrap() == serial).collect();
+    //     // First attempt to match serial number
+    //     if !serial.is_empty() && serial_matched.len() == 1 {
+    //       let n = serial_matched[0];
+    //       println!("Re-registering to {}", hid_io_client::format_node(n));
+    //       id = n.get_id();
+    //     } else {
+    //       let keyboards: Vec<_> = nodes
+    //         .iter()
+    //         .filter(|n| {
+    //           n.get_type().unwrap() == NodeType::UsbKeyboard
+    //             || n.get_type().unwrap() == NodeType::BleKeyboard
+    //         })
+    //         .collect();
+    //
+    //       // Next, if serial number is unset and there is only one keyboard, automatically attach
+    //       if serial.is_empty() && keyboards.len() == 1 {
+    //         let n = keyboards[0];
+    //         println!("Registering to {}", hid_io_client::format_node(n));
+    //         id = n.get_id();
+    //       // Otherwise display a list of keyboard nodes
+    //       } else {
+    //         println!();
+    //         for n in keyboards {
+    //           println!(" * {} - {}", n.get_id(), hid_io_client::format_node(n));
+    //         }
+    //
+    //         print!("Please choose a device: ");
+    //         std::io::stdout().flush()?;
+    //
+    //         let mut n = String::new();
+    //         std::io::stdin().read_line(&mut n)?;
+    //         id = n.trim().parse().unwrap();
+    //       }
+    //     }
+    //     id
+    //   }
+    // };
+
+    let serial: String = match args.get(1) {
+      Some(n) => {
+        println!("Serial specified: {}", n);
+        n.to_owned()
+      },
       None => {
-        let id;
+        let ser: String;
 
         let serial_matched: Vec<_> =
           nodes.iter().filter(|n| n.get_serial().unwrap() == serial).collect();
@@ -345,7 +194,7 @@ async fn try_main() -> Result<(), capnp::Error> {
         if !serial.is_empty() && serial_matched.len() == 1 {
           let n = serial_matched[0];
           println!("Re-registering to {}", hid_io_client::format_node(n));
-          id = n.get_id();
+          ser = serial_matched[0].get_serial().unwrap().to_owned();
         } else {
           let keyboards: Vec<_> = nodes
             .iter()
@@ -359,12 +208,12 @@ async fn try_main() -> Result<(), capnp::Error> {
           if serial.is_empty() && keyboards.len() == 1 {
             let n = keyboards[0];
             println!("Registering to {}", hid_io_client::format_node(n));
-            id = n.get_id();
+            ser = n.get_serial().unwrap().to_owned();
           // Otherwise display a list of keyboard nodes
           } else {
             println!();
             for n in keyboards {
-              println!(" * {} - {}", n.get_id(), hid_io_client::format_node(n));
+              println!(" * {} - {}", n.get_serial().unwrap(), hid_io_client::format_node(n));
             }
 
             print!("Please choose a device: ");
@@ -372,16 +221,19 @@ async fn try_main() -> Result<(), capnp::Error> {
 
             let mut n = String::new();
             std::io::stdin().read_line(&mut n)?;
-            id = n.trim().parse().unwrap();
+            ser = n.trim().to_owned();
           }
         }
-        id
+        ser
       }
     };
 
-    let device = nodes.iter().find(|n| n.get_id() == nid);
+    let device = nodes.iter().find(|n| {
+        println!("Found: {}", n.get_serial().unwrap());
+        n.get_serial().unwrap() == serial
+    });
     if device.is_none() {
-      eprintln!("Could not find node: {}", nid);
+      eprintln!("Could not find node: {}", serial);
       std::process::exit(1);
     }
     let device = device.unwrap();
