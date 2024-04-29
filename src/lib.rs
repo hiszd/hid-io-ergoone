@@ -10,10 +10,11 @@ pub fn log_cmd(cmd: &Output) {
       String::from_utf8(cmd.stdout.clone()).unwrap()
     );
   } else {
-    println!(
-      "ERROR: pamixer - {} -- {}",
-      String::from_utf8(cmd.stderr.clone()).unwrap(),
-      String::from_utf8(cmd.stdout.clone()).unwrap()
-    );
+    if !cmd.stderr.is_empty() {
+      println!("ERROR: pamixer - {}", String::from_utf8(cmd.stderr.clone()).unwrap(),);
+    }
+    if !cmd.stdout.is_empty() {
+      println!("pamixer - {}", String::from_utf8(cmd.stdout.clone()).unwrap(),);
+    }
   }
 }

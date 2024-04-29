@@ -42,54 +42,110 @@ pub struct PactlInput {
 impl PactlInput {
   pub fn default() -> Self {
     Self {
-      index: "@DEFAULT_SINK@".to_string(),
+      index: "".to_string(),
       sink: 0,
       client: String::new(),
     }
   }
 
   pub fn volume(&self, prefix: &str, volume: u32) {
-    crate::log_cmd(
-      &Command::new("pactl")
-        .arg("set-sink-input-volume")
-        .arg(self.index.to_string())
-        .arg(prefix.to_string() + &volume.to_string() + "%")
-        .output()
-        .unwrap(),
-    );
+    match self.index.len() {
+      0 => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-volume")
+            .arg("@DEFAULT_SINK@")
+            .arg(prefix.to_string() + &volume.to_string() + "%")
+            .output()
+            .unwrap(),
+        );
+      }
+      _ => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-input-volume")
+            .arg(self.index.clone())
+            .arg(prefix.to_string() + &volume.to_string() + "%")
+            .output()
+            .unwrap(),
+        );
+      }
+    }
   }
 
   pub fn mute(&self) {
-    crate::log_cmd(
-      &Command::new("pactl")
-        .arg("set-sink-input-mute")
-        .arg(self.index.to_string())
-        .arg("1")
-        .output()
-        .unwrap(),
-    );
+    match self.index.len() {
+      0 => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-mute")
+            .arg("@DEFAULT_SINK@")
+            .arg("1")
+            .output()
+            .unwrap(),
+        );
+      }
+      _ => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-input-mute")
+            .arg(self.index.to_string())
+            .arg("1")
+            .output()
+            .unwrap(),
+        );
+      }
+    }
   }
 
   pub fn unmute(&self) {
-    crate::log_cmd(
-      &Command::new("pactl")
-        .arg("set-sink-input-mute")
-        .arg(self.index.to_string())
-        .arg("0")
-        .output()
-        .unwrap(),
-    );
+    match self.index.len() {
+      0 => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-mute")
+            .arg("@DEFAULT_SINK@")
+            .arg("0")
+            .output()
+            .unwrap(),
+        );
+      }
+      _ => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-input-mute")
+            .arg(self.index.to_string())
+            .arg("0")
+            .output()
+            .unwrap(),
+        );
+      }
+    }
   }
 
   pub fn toggle_mute(&self) {
-    crate::log_cmd(
-      &Command::new("pactl")
-        .arg("set-sink-input-mute")
-        .arg(self.index.to_string())
-        .arg("toggle")
-        .output()
-        .unwrap(),
-    );
+    match self.index.len() {
+      0 => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-mute")
+            .arg("@DEFAULT_SINK@")
+            .arg("toggle")
+            .output()
+            .unwrap(),
+        );
+      }
+      _ => {
+        crate::log_cmd(
+          &Command::new("pactl")
+            .arg("set-sink-input-mute")
+            .arg(self.index.to_string())
+            .arg("toggle")
+            .output()
+            .unwrap(),
+        );
+      }
+    }
   }
 }
 

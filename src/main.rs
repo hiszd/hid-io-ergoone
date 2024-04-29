@@ -219,8 +219,9 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                   sinks.iter().for_each(|i| {
                     i.volume("+", vol as u32);
                   })
+                } else {
+                    PactlInput::default().volume("+", vol as u32);
                 }
-                PactlInput::default().volume("+", vol as u32);
               }
               h0060::Command::Dec => {
                 if app.is_some() {
@@ -241,7 +242,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
                     i.mute();
                   })
                 } else {
-                PactlInput::default().mute();
+                  PactlInput::default().mute();
                 }
               }
               h0060::Command::UnMute => {
