@@ -32,6 +32,7 @@ use hid_io_client::capnp_rpc;
 use hid_io_client::common_capnp::NodeType;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
+use hid_io_core::hidio_capnp;
 use hid_io_ergoone::modules::layer::handle_layer_event;
 use hid_io_ergoone::modules::volume::handle_volume;
 use rand::Rng;
@@ -59,14 +60,20 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
     match params.which().unwrap() {
       hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
         let v = v.unwrap();
-        println!("Volume: {:?}, {}", v.get_cmd().unwrap(), v.get_vol());
+        let cmd = v.get_cmd().unwrap();
+        let vol = v.get_vol();
+        let app_raw = v.get_app().unwrap();
+        let app = match app_raw.len() {
+          0 => None,
+          _ => Some(app_raw),
+        };
+        println!("Volume: cmd: {:?}, vol: {}, app: {}", cmd, vol, app_raw);
+        handle_volume(cmd, vol, app);
       }
       hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Cli(c) => {
         if data > 0 {
           let out = c.unwrap().get_output().unwrap();
-          if out.starts_with("volume-") {
-            handle_volume(&out);
-          } else if out.starts_with("layer-event") {
+          if out.starts_with("layer-event") {
             handle_layer_event(&out);
           } else {
             println!("Unknown: {}", out);
@@ -131,60 +138,11 @@ async fn try_main() -> Result<(), capnp::Error> {
     let nodes = nodes_resp.get()?.get_nodes()?;
 
     let args: Vec<_> = std::env::args().collect();
-    // let nid = match args.get(1) {
-    //   Some(n) => {
-    //     let n = n.parse().unwrap();
-    //     println!("ID specified: {}", n);
-    //     n
-    //   }
-    //   None => {
-    //     let id;
-    //
-    //     let serial_matched: Vec<_> =
-    //       nodes.iter().filter(|n| n.get_serial().unwrap() == serial).collect();
-    //     // First attempt to match serial number
-    //     if !serial.is_empty() && serial_matched.len() == 1 {
-    //       let n = serial_matched[0];
-    //       println!("Re-registering to {}", hid_io_client::format_node(n));
-    //       id = n.get_id();
-    //     } else {
-    //       let keyboards: Vec<_> = nodes
-    //         .iter()
-    //         .filter(|n| {
-    //           n.get_type().unwrap() == NodeType::UsbKeyboard
-    //             || n.get_type().unwrap() == NodeType::BleKeyboard
-    //         })
-    //         .collect();
-    //
-    //       // Next, if serial number is unset and there is only one keyboard, automatically attach
-    //       if serial.is_empty() && keyboards.len() == 1 {
-    //         let n = keyboards[0];
-    //         println!("Registering to {}", hid_io_client::format_node(n));
-    //         id = n.get_id();
-    //       // Otherwise display a list of keyboard nodes
-    //       } else {
-    //         println!();
-    //         for n in keyboards {
-    //           println!(" * {} - {}", n.get_id(), hid_io_client::format_node(n));
-    //         }
-    //
-    //         print!("Please choose a device: ");
-    //         std::io::stdout().flush()?;
-    //
-    //         let mut n = String::new();
-    //         std::io::stdin().read_line(&mut n)?;
-    //         id = n.trim().parse().unwrap();
-    //       }
-    //     }
-    //     id
-    //   }
-    // };
-
     let serial: String = match args.get(1) {
       Some(n) => {
         println!("Serial specified: {}", n);
         n.to_owned()
-      },
+      }
       None => {
         let ser: String;
 
@@ -229,8 +187,8 @@ async fn try_main() -> Result<(), capnp::Error> {
     };
 
     let device = nodes.iter().find(|n| {
-        println!("Found: {}", n.get_serial().unwrap());
-        n.get_serial().unwrap() == serial
+      println!("Found: {}", n.get_serial().unwrap());
+      n.get_serial().unwrap() == serial
     });
     if device.is_none() {
       eprintln!("Could not find node: {}", serial);
@@ -264,48 +222,54 @@ async fn try_main() -> Result<(), capnp::Error> {
     let _callback = subscribe_req.send().promise.await.unwrap();
 
     println!("READY");
-    let (vt_tx, mut vt_rx) = tokio::sync::mpsc::channel::<u8>(100);
-    std::thread::spawn(move || loop {
-      #[allow(clippy::significant_drop_in_scrutinee)]
-      for byte in std::io::stdin().lock().bytes() {
-        if let Ok(b) = byte {
-          if let Err(e) = vt_tx.blocking_send(b) {
-            println!("Restarting stdin loop: {}", e);
-            return;
-          }
-        } else {
-          println!("Lost stdin");
-          std::process::exit(2);
-        }
-      }
-    });
+    // let (vt_tx, mut vt_rx) = tokio::sync::mpsc::channel::<u8>(100);
+    // let instr = String::from_utf8(std::io::stdin().lock().bytes().map(|b| b.unwrap()).collect()).unwrap();
+    //   if instr == "q".to_string() {
+    //     if let Ok(hid_io_client::common_capnp::destination::node::Which::Keyboard(node)) =
+    //       device.get_node().which()
+    //     {
+    //       let node = node.unwrap();
+    //
+    //       let request = hidio_capnp::node::Client {
+    //         client: node.client,
+    //       }
+    //       .layer_set_command_request();
+    //       request.get().set_layer(0);
+    //     }
+    //   }
+    // #[allow(clippy::significant_drop_in_scrutinee)]
+    // for byte in std::io::stdin().lock().bytes() {
+    //   if let Ok(b) = byte {
+    //     if let Err(e) = vt_tx.blocking_send(b) {
+    //       println!("Restarting stdin loop: {}", e);
+    //       return;
+    //     }
+    //   } else {
+    //     println!("Lost stdin");
+    //     std::process::exit(2);
+    //   }
+    // }
 
+    let mut instr = String::new();
     loop {
-      let mut vt_buf = vec![];
-      // Await the first byte
-      match vt_rx.recv().await {
-        Some(c) => {
-          vt_buf.push(c);
-        }
-        None => {
-          println!("Lost socket");
-          ::std::process::exit(1);
-        }
-      }
-      // Loop over the rest of the buffer
-      loop {
-        match vt_rx.try_recv() {
-          Ok(c) => {
-            vt_buf.push(c);
+      std::io::stdin().read_line(&mut instr).unwrap();
+      if instr.starts_with("layer") {
+        let strg = &instr[6..instr.len() - 1];
+        println!("Layer: \"{}\"", strg);
+        let layer = strg.parse::<u16>().unwrap();
+        instr = String::new();
+        println!("sending");
+        if let Ok(hid_io_client::common_capnp::destination::node::Which::Keyboard(node)) =
+          device.get_node().which()
+        {
+          let node = node.unwrap();
+
+          let mut request = hidio_capnp::node::Client {
+            client: node.client,
           }
-          Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {
-            // Done, can begin sending cli message to device
-            break;
-          }
-          Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
-            println!("Lost socket (buffer)");
-            ::std::process::exit(1);
-          }
+          .layer_set_command_request();
+          request.get().set_layer(layer);
+          let _callback = request.send().promise.await.unwrap();
         }
       }
     }

@@ -1,16 +1,15 @@
-use hid_io_protocol::commands::h0060;
+use hid_io_client::keyboard_capnp::keyboard::signal::volume::Command::*;
 
 use crate::json::types::*;
 use crate::json::utils::get_client_matches;
 
-pub fn handle_volume(out: &str) -> () {
-  let splt = out.split(':').collect::<Vec<&str>>();
-  let cmdnum = splt[0][7..].to_string();
-  let volcmd = h0060::Command::try_from(cmdnum.as_str()).unwrap();
-  let vol = splt[1].parse::<u16>().unwrap();
-  let app: Option<&str> = if splt.len() > 2 { Some(splt[2]) } else { None };
-  match volcmd {
-    h0060::Command::Set => {
+pub fn handle_volume(
+  cmd: hid_io_client::keyboard_capnp::keyboard::signal::volume::Command,
+  vol: u16,
+  app: Option<&str>,
+) -> () {
+  match cmd {
+    Set => {
       if app.is_some() {
         let client = get_client_matches(app.unwrap());
         let sinks = client.condense();
@@ -21,7 +20,7 @@ pub fn handle_volume(out: &str) -> () {
         PactlInput::default().volume("", vol as u32);
       }
     }
-    h0060::Command::Inc => {
+    Inc => {
       if app.is_some() {
         let client = get_client_matches(app.unwrap());
         let sinks = client.condense();
@@ -32,7 +31,7 @@ pub fn handle_volume(out: &str) -> () {
         PactlInput::default().volume("+", vol as u32);
       }
     }
-    h0060::Command::Dec => {
+    Dec => {
       if app.is_some() {
         let client = get_client_matches(app.unwrap());
         let sinks = client.condense();
@@ -43,7 +42,7 @@ pub fn handle_volume(out: &str) -> () {
         PactlInput::default().volume("-", vol as u32);
       }
     }
-    h0060::Command::Mute => {
+    Mute => {
       if app.is_some() {
         let client = get_client_matches(app.unwrap());
         let sinks = client.condense();
@@ -54,7 +53,7 @@ pub fn handle_volume(out: &str) -> () {
         PactlInput::default().mute();
       }
     }
-    h0060::Command::UnMute => {
+    UnMute => {
       if app.is_some() {
         let client = get_client_matches(app.unwrap());
         let sinks = client.condense();
@@ -65,7 +64,7 @@ pub fn handle_volume(out: &str) -> () {
         PactlInput::default().unmute();
       }
     }
-    h0060::Command::ToggleMute => {
+    ToggleMute => {
       if app.is_some() {
         let client = get_client_matches(app.unwrap());
         let sinks = client.condense();
@@ -75,9 +74,6 @@ pub fn handle_volume(out: &str) -> () {
       } else {
         PactlInput::default().toggle_mute();
       }
-    }
-    h0060::Command::InvalidCommand => {
-      println!("ERROR: InvalidCommand");
     }
   }
 }
