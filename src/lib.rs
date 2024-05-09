@@ -1,5 +1,6 @@
 use std::process::Output;
 
+pub mod gui;
 pub mod json;
 pub mod modules;
 

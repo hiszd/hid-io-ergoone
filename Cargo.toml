@@ -4,6 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
+iced = { version = "0.12.1", features = ["debug", "web-colors", "system"] }
 hid-io-client = { path = "../hid-io-core/hid-io-client" }
 hid-io-core  = { version = "^0.1.4", path = "../hid-io-core", default-features = false, features = ["api"] }
 hid-io-protocol  = { version = "^0.1.4", path = "../hid-io-core/hid-io-protocol" }

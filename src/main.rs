@@ -33,6 +33,7 @@ use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
 use hid_io_ergoone::modules::layer::handle_layer_event;
 use hid_io_ergoone::modules::volume::handle_volume;
+use iced::Application;
 use rand::Rng;
 
 #[derive(Default)]
@@ -83,6 +84,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
 
 #[tokio::main]
 pub async fn main() -> Result<(), capnp::Error> {
+  let (tx, mut rx) = tokio::sync::mpsc::channel(1);
   setup_logging_lite().ok();
   tokio::task::LocalSet::new().run_until(try_main()).await
 }
@@ -208,58 +210,5 @@ async fn try_main() -> Result<(), capnp::Error> {
         break;
       }
     }
-
-    // let (vt_tx, mut vt_rx) = tokio::sync::mpsc::channel::<u8>(100);
-    // let instr =
-    //   String::from_utf8(std::io::stdin().lock().bytes().map(|b| b.unwrap()).collect()).unwrap();
-    // if instr == "q".to_string() {
-    //   if let Ok(hid_io_client::common_capnp::destination::node::Which::Keyboard(node)) =
-    //     device.get_node().which()
-    //   {
-    //     let node = node.unwrap();
-    //
-    //     let mut request = hidio_capnp::node::Client {
-    //       client: node.client,
-    //     }
-    //     .layer_set_command_request();
-    //     request.get().set_layer(0);
-    //   }
-    // }
-    // #[allow(clippy::significant_drop_in_scrutinee)]
-    // for byte in std::io::stdin().lock().bytes() {
-    //   if let Ok(b) = byte {
-    //     if let Err(e) = vt_tx.blocking_send(b) {
-    //       println!("Restarting stdin loop: {}", e);
-    //       return Ok(());
-    //     }
-    //   } else {
-    //     println!("Lost stdin");
-    //     std::process::exit(2);
-    //   }
-    // }
-
-    // let mut instr = String::new();
-    // loop {
-    //   std::io::stdin().read_line(&mut instr).unwrap();
-    //   if instr.starts_with("layer") {
-    //     let strg = &instr[6..instr.len() - 1];
-    //     println!("Layer: \"{}\"", strg);
-    //     let layer = strg.parse::<u16>().unwrap();
-    //     instr = String::new();
-    //     println!("sending");
-    //     if let Ok(hid_io_client::common_capnp::destination::node::Which::Keyboard(node)) =
-    //       device.get_node().which()
-    //     {
-    //       let node = node.unwrap();
-    //
-    //       let mut request = hidio_capnp::node::Client {
-    //         client: node.client,
-    //       }
-    //       .layer_set_command_request();
-    //       request.get().set_layer(layer);
-    //       let _callback = request.send().promise.await.unwrap();
-    //     }
-    //   }
-    // }
   }
 }
