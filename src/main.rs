@@ -19,95 +19,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
+#![feature(async_closure)]
 extern crate tokio;
 
 use std::io::Write;
+use std::sync::Mutex;
 
-use capnp::traits::IntoInternalStructReader;
-use hid_io_client::capnp;
-use hid_io_client::capnp::capability::Promise;
 use hid_io_client::capnp_rpc;
-use hid_io_client::common_capnp::NodeType;
-use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
-use hid_io_ergoone::gui::HidIoGui;
-use hid_io_ergoone::modules::layer::handle_layer_event;
-use hid_io_ergoone::modules::volume::handle_volume;
+use hid_io_core::common_capnp::NodeType;
+use hid_io_core::keyboard_capnp;
 use iced::Application;
 use iced::Font;
 use iced::Settings;
+use log::trace;
 use rand::Rng;
-use tokio::task::JoinError;
+use tokio::runtime::Builder;
 
-static mut HIDIO_MSG_TX: Option<std::sync::mpsc::Sender<String>> = None;
-static mut HIDIO_MSG_RX: Option<std::sync::mpsc::Receiver<String>> = None;
+pub mod gui;
+pub mod json;
+pub mod modules;
+pub mod util;
 
-#[derive(Default)]
-pub struct KeyboardSubscriberImpl {}
+use gui::HidIoGui;
 
-impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
-  fn update(
-    &mut self,
-    params: keyboard_capnp::keyboard::subscriber::UpdateParams,
-    _results: keyboard_capnp::keyboard::subscriber::UpdateResults,
-  ) -> Promise<(), capnp::Error> {
-    // println!("Data: {}", params.get().unwrap().get_signal().unwrap().get_data().into_internal_struct_reader().get_data_field::<u16>(1));
-    let data = params
-      .get()
-      .unwrap()
-      .get_signal()
-      .unwrap()
-      .get_data()
-      .into_internal_struct_reader()
-      .get_data_field::<u16>(1);
-    let params = capnp_rpc::pry!(capnp_rpc::pry!(params.get()).get_signal()).get_data().to_owned();
-    // println!("{:?}", data);
-    match params.which().unwrap() {
-      hid_io_client::keyboard_capnp::keyboard::signal::data::Which::Volume(v) => {
-        let v = v.unwrap();
-        let cmd = v.get_cmd().unwrap();
-        let vol = v.get_vol();
-        let app_raw = v.get_app().unwrap();
-        let app = match app_raw.len() {
-          0 => None,
-          _ => Some(app_raw),
-        };
-        println!("Volume: cmd: {:?}, vol: {}, app: {}", cmd, vol, app_raw);
-        handle_volume(cmd, vol, app);
-      }
-      hid_io_client::keyboard_capnp::keyboard::signal::data::Which::LayerChanged(l) => {
-        let l = l.unwrap();
-        println!("LayerChanged: {}", l.get_layer());
-      }
-      #[allow(unreachable_patterns)]
-      _ => {
-        println!("Unknown signal");
-      }
-    }
-    Promise::ok(())
-  }
-}
+pub static mut HIDIO_QUEUE: Mutex<Vec<util::MSG>> = Mutex::new(Vec::new());
 
 #[tokio::main]
-pub async fn main() -> Result<(), iced::Error> {
-  let (tx, mut rx) = tokio::sync::broadcast::channel(1);
-  unsafe {
-    HIDIO_MSG_TX = Some(tx);
-    HIDIO_MSG_RX = Some(rx);
-  }
+pub async fn main() {
   setup_logging_lite().ok();
-  let gui = tokio::spawn(async move {
-    HidIoGui::run(Settings {
-      default_font: Font::MONOSPACE,
-      ..Settings::default()
+  tokio::task::LocalSet::new()
+    .run_until(async move {
+      let hidtask = tokio::task::spawn_local(async move { try_conn().await });
+      HidIoGui::run(Settings {
+        default_font: Font::MONOSPACE,
+        ..Settings::default()
+      })
+      .unwrap()
     })
-  });
-  let hid = tokio::spawn(try_main());
-  gui.await.unwrap()
+    .await;
 }
 
-async fn try_main() -> Result<(), capnp::Error> {
+// async fn try_main() -> Result<(), ()> {
+//   let gui = tokio::task::spawn_local(async {
+//     HidIoGui::run(Settings {
+//       default_font: Font::MONOSPACE,
+//       ..Settings::default()
+//     })
+//     .unwrap();
+//   });
+//   let conn = tokio::task::spawn_local(async {
+//     try_conn().await.unwrap();
+//   });
+//   loop {
+//       conn.
+//   }
+//   Ok(())
+// }
+
+async fn try_conn() -> Result<(), capnp::Error> {
+  trace!("Connecting to hid-io-core...");
   // Prepare hid-io-core connection
   let mut hidio_conn = hid_io_client::HidioConnection::new().unwrap();
   let mut rng = rand::thread_rng();
@@ -196,7 +167,7 @@ async fn try_main() -> Result<(), capnp::Error> {
     // serial = device.get_serial().unwrap().to_string();
 
     // Build subscription callback
-    let subscription = capnp_rpc::new_client(KeyboardSubscriberImpl::default());
+    let subscription = capnp_rpc::new_client(util::KeyboardSubscriberImpl::default());
 
     let subscribe_req = {
       let node = match device.get_node().which().unwrap() {

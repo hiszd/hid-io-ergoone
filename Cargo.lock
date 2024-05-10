@@ -1360,6 +1360,7 @@ dependencies = [
  "hid-io-core",
  "hid-io-protocol",
  "iced",
+ "log",
  "rand",
  "serde",
  "serde_json",
