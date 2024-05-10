@@ -1,17 +1,17 @@
+use std::borrow::BorrowMut;
+use std::sync::RwLock;
+
+use iced::futures::{SinkExt, StreamExt};
 use iced::theme;
 use iced::widget::{button, column, container, row, text};
 use iced::{keyboard, Subscription};
-use tokio::sync::RwLock;
 
 use crate::util::MSG;
 
+#[derive(Debug)]
 pub enum Conn {
   Loading,
-  Loaded(ConnState),
-}
-
-pub struct ConnState {
-  receiver: RwLock<Option<tokio::sync::broadcast::Receiver<MSG>>>,
+  Loaded,
 }
 
 pub struct HidIoGui {
@@ -64,12 +64,12 @@ impl iced::Application for HidIoGui {
       }
       Message::Layer(l) => {
         println!("Layer: {}", l);
-        s.layer = l;
+        self.layer = l;
         iced::Command::none()
       }
       Message::Volume(v) => {
         println!("Volume: {}", v);
-        s.volume = v;
+        self.volume = v;
         iced::Command::none()
       }
       Message::NAN => iced::Command::none(),
@@ -82,14 +82,39 @@ impl iced::Application for HidIoGui {
       keyboard::Key::Character("j") => Some(Message::Decrement),
       _ => None,
     });
-    let ms = iced::subscription::unfold("gui", 0, |state| async move {
-      let mut queue = unsafe { crate::HIDIO_QUEUE.lock().unwrap() };
-      match queue.pop() {
-        Some(m) => match m {
-          MSG::Layer(l) => (Message::Layer(l), 0),
-          MSG::Volume(v) => (Message::Volume(v), 0),
-        },
-        None => (Message::NAN, 0),
+    let ms = iced::subscription::channel("ms", 10, |mut output| async move {
+      let mut state = Conn::Loading;
+      let mut rec: RwLock<Option<iced_futures::futures::channel::mpsc::Receiver<MSG>>> =
+        RwLock::new(None);
+
+      loop {
+        match state {
+          Conn::Loading => {
+            // Create channel
+            let (sender, mut receiver) = iced_futures::futures::channel::mpsc::channel(10);
+
+            // Send the sender back to the application
+            output.send(Message::NAN).await.unwrap();
+
+            // We are ready to receive messages
+            rec = RwLock::new(Some(receiver));
+            state = Conn::Loaded;
+          }
+          Conn::Loaded => {
+            let mut receiver = rec.get_mut().unwrap().take().unwrap();
+            // Read next input sent from `Application`
+            let input = receiver.select_next_some().await;
+
+            match input {
+              MSG::Layer(l) => {
+                output.send(Message::Layer(l)).await.unwrap();
+              }
+              MSG::Volume(v) => {
+                output.send(Message::Volume(v)).await.unwrap();
+              }
+            }
+          }
+        }
       }
     });
     Subscription::batch(vec![b, ms])

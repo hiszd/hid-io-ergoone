@@ -1360,6 +1360,7 @@ dependencies = [
  "hid-io-core",
  "hid-io-protocol",
  "iced",
+ "iced_futures",
  "log",
  "rand",
  "serde",
@@ -1443,6 +1444,7 @@ dependencies = [
  "futures",
  "iced_core",
  "log",
+ "tokio",
  "wasm-bindgen-futures",
  "wasm-timer",
 ]
