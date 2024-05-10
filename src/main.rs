@@ -31,10 +31,17 @@ use hid_io_client::capnp_rpc;
 use hid_io_client::common_capnp::NodeType;
 use hid_io_client::keyboard_capnp;
 use hid_io_client::setup_logging_lite;
+use hid_io_ergoone::gui::HidIoGui;
 use hid_io_ergoone::modules::layer::handle_layer_event;
 use hid_io_ergoone::modules::volume::handle_volume;
 use iced::Application;
+use iced::Font;
+use iced::Settings;
 use rand::Rng;
+use tokio::task::JoinError;
+
+static mut HIDIO_MSG_TX: Option<std::sync::mpsc::Sender<String>> = None;
+static mut HIDIO_MSG_RX: Option<std::sync::mpsc::Receiver<String>> = None;
 
 #[derive(Default)]
 pub struct KeyboardSubscriberImpl {}
@@ -83,10 +90,21 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
 }
 
 #[tokio::main]
-pub async fn main() -> Result<(), capnp::Error> {
-  let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+pub async fn main() -> Result<(), iced::Error> {
+  let (tx, mut rx) = tokio::sync::broadcast::channel(1);
+  unsafe {
+    HIDIO_MSG_TX = Some(tx);
+    HIDIO_MSG_RX = Some(rx);
+  }
   setup_logging_lite().ok();
-  tokio::task::LocalSet::new().run_until(try_main()).await
+  let gui = tokio::spawn(async move {
+    HidIoGui::run(Settings {
+      default_font: Font::MONOSPACE,
+      ..Settings::default()
+    })
+  });
+  let hid = tokio::spawn(try_main());
+  gui.await.unwrap()
 }
 
 async fn try_main() -> Result<(), capnp::Error> {

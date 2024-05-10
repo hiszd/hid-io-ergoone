@@ -3,12 +3,12 @@ use iced::widget::{button, container, row, text};
 use iced::Application;
 use iced::{keyboard, Subscription};
 
-struct HidIoGui {
+pub struct HidIoGui {
   count: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Message {
+pub enum Message {
   Increment,
   Decrement,
 }
@@ -23,7 +23,9 @@ impl iced::Application for HidIoGui {
     (Self { count: 0 }, iced::Command::none())
   }
 
-  fn title(&self) -> String { String::from("HID-IO GUI") }
+  fn title(&self) -> String {
+    String::from("HID-IO GUI")
+  }
 
   fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
     match message {
@@ -52,7 +54,9 @@ impl iced::Application for HidIoGui {
     })
   }
 
-  fn theme(&self) -> Self::Theme { Self::Theme::Dark }
+  fn theme(&self) -> Self::Theme {
+    Self::Theme::Dark
+  }
 
   fn view(&self) -> iced::Element<'_, Self::Message> {
     let counter = row![
