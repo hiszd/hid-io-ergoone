@@ -7,6 +7,7 @@ edition = "2021"
 hid-io-client = { path = "../hid-io-core/hid-io-client" }
 hid-io-core  = { version = "^0.1.4", path = "../hid-io-core", default-features = false, features = ["api"] }
 hid-io-protocol  = { version = "^0.1.4", path = "../hid-io-core/hid-io-protocol" }
+hid-client-stdout = { version = "^0.1.0", path = "../hid-client-stdout" }
 tokio         = { version = "1.18", features = ["net", "rt-multi-thread", "macros", "sync", "time"] }
 tokio-rustls  = { version = "0.23" }
 tokio-util    = { version = "0.7", features = ["compat"] }

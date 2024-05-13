@@ -513,6 +513,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231dfb89cfffdbc30e7fc41579ed6066ad03abda9e567ccafae602b97ec5024"
 
 [[package]]
+name = "hid-client-stdout"
+version = "0.1.0"
+dependencies = [
+ "hid-io-client",
+]
+
+[[package]]
 name = "hid-io-client"
 version = "0.1.3"
 dependencies = [
@@ -564,6 +571,7 @@ name = "hid-io-ergoone"
 version = "0.0.1"
 dependencies = [
  "capnp",
+ "hid-client-stdout",
  "hid-io-client",
  "hid-io-core",
  "hid-io-protocol",

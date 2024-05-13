@@ -65,12 +65,20 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
           0 => None,
           _ => Some(app_raw),
         };
-        println!("Volume: cmd: {:?}, vol: {}, app: {}", cmd, vol, app_raw);
+        let app_msg = match app_raw.len() {
+          0 => None,
+          _ => Some(app_raw.to_string()),
+        };
+        let msg = hid_client_stdout::Messages::Volume(cmd, vol, app_msg);
+        let str = String::try_from(msg).unwrap();
+        println!("{}", str);
         handle_volume(cmd, vol, app);
       }
       hid_io_client::keyboard_capnp::keyboard::signal::data::Which::LayerChanged(l) => {
         let l = l.unwrap();
-        println!("LayerChanged: {}", l.get_layer());
+        let msg = hid_client_stdout::Messages::LayerChanged(l.get_layer());
+        let str = String::try_from(msg).unwrap();
+        println!("{}", str);
       }
       #[allow(unreachable_patterns)]
       _ => {
