@@ -72,7 +72,7 @@ impl keyboard_capnp::keyboard::subscriber::Server for KeyboardSubscriberImpl {
         let msg = hid_client_stdout::Messages::Volume(cmd, vol, app_msg);
         let str = String::try_from(msg).unwrap();
         println!("{}", str);
-        handle_volume(cmd, vol, app);
+        // handle_volume(cmd, vol, app);
       }
       hid_io_client::keyboard_capnp::keyboard::signal::data::Which::LayerChanged(l) => {
         let l = l.unwrap();
