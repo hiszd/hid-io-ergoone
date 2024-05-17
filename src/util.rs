@@ -1,8 +1,5 @@
 use std::process::Output;
 
-pub mod json;
-pub mod modules;
-
 pub fn log_cmd(cmd: &Output) {
   if !cmd.status.success() {
     panic!(

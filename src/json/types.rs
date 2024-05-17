@@ -51,7 +51,7 @@ impl PactlInput {
   pub fn volume(&self, prefix: &str, volume: u32) {
     match self.index.len() {
       0 => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-volume")
             .arg("@DEFAULT_SINK@")
@@ -61,7 +61,7 @@ impl PactlInput {
         );
       }
       _ => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-input-volume")
             .arg(self.index.clone())
@@ -76,7 +76,7 @@ impl PactlInput {
   pub fn mute(&self) {
     match self.index.len() {
       0 => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-mute")
             .arg("@DEFAULT_SINK@")
@@ -86,7 +86,7 @@ impl PactlInput {
         );
       }
       _ => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-input-mute")
             .arg(self.index.to_string())
@@ -101,7 +101,7 @@ impl PactlInput {
   pub fn unmute(&self) {
     match self.index.len() {
       0 => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-mute")
             .arg("@DEFAULT_SINK@")
@@ -111,7 +111,7 @@ impl PactlInput {
         );
       }
       _ => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-input-mute")
             .arg(self.index.to_string())
@@ -126,7 +126,7 @@ impl PactlInput {
   pub fn toggle_mute(&self) {
     match self.index.len() {
       0 => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-mute")
             .arg("@DEFAULT_SINK@")
@@ -136,7 +136,7 @@ impl PactlInput {
         );
       }
       _ => {
-        crate::log_cmd(
+        crate::util::log_cmd(
           &Command::new("pactl")
             .arg("set-sink-input-mute")
             .arg(self.index.to_string())
