@@ -6,11 +6,6 @@ impl From<crate::commands::Commands> for Command {
     match msgs {
       Commands::LayerSet(_) => Command::new("LayerSet")
         .about("Sets the current layer on the keyboard")
-        .arg(
-          arg!(-s --serial <SERIAL> "The serial number of the keyboard")
-            .required_unless_present("name"),
-        )
-        .arg(arg!(-n --name <NAME> "The name of the keyboard").required_unless_present("serial"))
         .arg(arg!([LAYER] "The layer to set").required(true)),
     }
   }
@@ -37,6 +32,11 @@ pub fn cli() -> Command {
       Command::new("exec")
         .about("Executes a command on the keyboard")
         .subcommand_required(true)
+        .arg(
+          arg!(-s --serial <SERIAL> "The serial number of the keyboard")
+            .required_unless_present("name"),
+        )
+        .arg(arg!(-n --name <NAME> "The name of the keyboard").required_unless_present("serial"))
         .subcommand(Command::from(crate::commands::Commands::LayerSet(0)))
         .arg_required_else_help(true),
     )
