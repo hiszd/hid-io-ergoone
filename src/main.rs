@@ -132,6 +132,10 @@ async fn try_main(matches: clap::ArgMatches) -> Result<(), capnp::Error> {
               || n.get_type().unwrap() == NodeType::BleKeyboard
           })
           .collect();
+        if keyboards.is_empty() {
+          println!("None");
+          std::process::exit(0);
+        }
         for n in keyboards {
           // TODO: Fix formatting
           println!("{}", hid_client_stdout::stdout_from_node(n));
